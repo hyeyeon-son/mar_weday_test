@@ -1,0 +1,259 @@
+{
+  "name": "Slack Cherry Blossom → Calendar Invite + Reminder DM",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "reaction_added"
+      },
+      "id": "1",
+      "name": "Slack Trigger",
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "slack-reaction-webhook",
+      "credentials": {
+        "slackApi": {
+          "id": "slack_cred",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.event.reaction }}",
+              "operation": "equals",
+              "value2": "cherry_blossom"
+            },
+            {
+              "value1": "={{ $json.event.item.channel }}",
+              "operation": "equals",
+              "value2": "C09JY43719N"
+            },
+            {
+              "value1": "={{ $json.event.item.ts }}",
+              "operation": "equals",
+              "value2": "1772160261.398979"
+            }
+          ]
+        }
+      },
+      "id": "2",
+      "name": "Filter: cherry_blossom on Announcement",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "user": "={{ $json.event.user }}"
+      },
+      "id": "3",
+      "name": "Slack - Get User Info",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [710, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "slack_cred",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addAttendee",
+        "calendarId": "primary",
+        "eventId": "MzJxdGt1cnFnazY5NmN1YmZnOW1vcWtsbmEgaHlleWVvbi5zb25AbW9sb2NvLmNvbQ",
+        "attendeeEmail": "={{ $json.user.profile.email }}"
+      },
+      "id": "4",
+      "name": "Google Calendar - Add Attendee",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [940, 200],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "gcal_cred",
+          "name": "Google Calendar OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "summary": "3월 12일 오후 3:30 이벤트 참석자 정보 저장",
+        "additionalFields": {}
+      },
+      "id": "5",
+      "name": "Save Attendee Email to List",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [940, 380],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "email",
+              "value": "={{ $('Slack - Get User Info').item.json.user.profile.email }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "slack_user_id",
+              "value": "={{ $('Slack Trigger').item.json.event.user }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtDay": [3],
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        },
+        "triggerAtDate": "2025-03-11T09:00:00"
+      },
+      "id": "6",
+      "name": "Schedule Trigger - 3/11 오전 9시",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 600]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendarId": "hyeyeon.son@moloco.com",
+        "limit": 1,
+        "filters": {
+                      "iCalUID": "MzJxdGt1cnFnazY5NmN1YmZnOW1vcWtsbmEgaHlleWVvbi5zb25AbW9sb2NvLmNvbQ"
+        },
+        "options": {}
+      },
+      "id": "7",
+      "name": "Google Calendar - Get Event Attendees",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [480, 600],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "gcal_cred",
+          "name": "Google Calendar OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "attendees",
+        "options": {}
+      },
+      "id": "8",
+      "name": "Split Attendees",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [710, 600]
+    },
+    {
+      "parameters": {
+        "lookupField": "email",
+        "lookupValue": "={{ $json.email }}",
+        "returnAll": false
+      },
+      "id": "9",
+      "name": "Slack - Find User by Email",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [940, 600],
+      "parameters": {
+        "resource": "user",
+        "operation": "getByEmail",
+        "email": "={{ $json.email }}"
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "slack_cred",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "post",
+        "channel": "={{ $json.user.id }}",
+        "text": "안녕하세요! 👋\n내일 *3월 12일 오후 3:30* 행사가 있습니다. 잊지 마세요 🌸\n참석 신청해주셔서 감사합니다. 내일 뵙겠습니다!",
+        "otherOptions": {}
+      },
+      "id": "10",
+      "name": "Slack - Send Reminder DM",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1170, 600],
+      "credentials": {
+        "slackApi": {
+          "id": "slack_cred",
+          "name": "Slack API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Slack Trigger": {
+      "main": [
+        [{ "node": "Filter: cherry_blossom on Announcement", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter: cherry_blossom on Announcement": {
+      "main": [
+        [{ "node": "Slack - Get User Info", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Slack - Get User Info": {
+      "main": [
+        [
+          { "node": "Google Calendar - Add Attendee", "type": "main", "index": 0 },
+          { "node": "Save Attendee Email to List", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Schedule Trigger - 3/11 오전 9시": {
+      "main": [
+        [{ "node": "Google Calendar - Get Event Attendees", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Calendar - Get Event Attendees": {
+      "main": [
+        [{ "node": "Split Attendees", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Attendees": {
+      "main": [
+        [{ "node": "Slack - Find User by Email", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack - Find User by Email": {
+      "main": [
+        [{ "node": "Slack - Send Reminder DM", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
